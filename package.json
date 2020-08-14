@@ -1,0 +1,17 @@
+{
+    "name": "match_scheduler",
+    "version": "1.0.0",
+    "description": "Helps schedule matches between individuals (or groups with captains)",
+    "main": "index.js",
+    "dependencies": {
+        "discord.js": "^12.2.0"
+    },
+    "author": "ashen",
+    "scripts": {
+        "start": "node index.js",
+        "dev": "nodemon index.js"
+    },
+    "devDependencies": {
+        "nodemon": "^2.0.4"
+    }
+}
