@@ -19,8 +19,25 @@ const utils = require('./src/utils')
 //      Permissions Integer
 
 client.on('ready', () => {
-    const roster = utils.resolveChannel(client, rosterChannel)
-    rosterHandler.setupChannel(roster, false)
+    // Set up the rosters
+    const rosters = utils.resolveChannel(client, rosterChannel)
+    rosters.forEach(roster =>
+        utils.setupChannel(
+            roster,
+            rosterHandler.constants.initialMesssage,
+            false
+        )
+    )
+
+    // Set up the coordination
+    const coordination = utils.resolveChannel(client, coordinationChannel)
+    coordination.forEach(coord => {
+        utils.setupChannel(
+            coord,
+            coordinationHandler.constants.initialMessage,
+            false
+        )
+    })
 })
 
 client.on('message', msg => {

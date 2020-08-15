@@ -1,15 +1,30 @@
-const utils = require('./utils')
-const { rosterChannel } = require('../secrets.json')
+const { setupChannel, constants } = require('./utils')
 
+exports.constants = {
+    initialMesssage: 'Roster:',
+}
+
+/**
+ * Handles a message in the roster channel
+ *
+ * @param client the client object
+ * @param msg the message sent
+ */
 exports.handleMsg = (client, msg) => {
-    console.log(msg.author)
     const content = msg.content
-    const userRefRegex = /^<@!\d*>\S*$/
     const userDeleteRegex = /^del <@!\d*>\S*$/i
-    if (content.match(userRefRegex) || content.match(userDeleteRegex)) {
+
+    if (content === 'clear' && msg.member.hasPermission('ADMINISTRATOR')) {
+        // If the message is 'clear' and the member is an administrator, clear the channel
+        setupChannel(msg.channel, this.constants.initialMesssage, true)
+    } else if (
+        content.match(constants.userRegex) ||
+        content.match(userDeleteRegex)
+    ) {
+        // If the message matched either of the commands, add or delete the specified user to/from the roster
         msg.channel.messages.fetch().then(messages => {
             let roster = null
-            messages.array().forEach(message => {
+            messages.forEach(message => {
                 if (message.author.id === client.user.id) {
                     roster = message
                 }
@@ -19,36 +34,19 @@ exports.handleMsg = (client, msg) => {
                     // Add the user to the roster
                     roster.edit(`${roster.content}\n${content}`)
                 } else {
-                    // Remove the user from the roster by splitting on the delete message content and joining
-                    roster.edit(
-                        roster.content.split(content.substring(4)).join()
-                    )
+                    const rosterContent = roster.content.split('\n')
+                    // Remove the `del ` from the message
+                    const removeId = content.substring(4)
+                    // Remove the user from the roster
+                    rosterContent.splice(rosterContent.indexOf(removeId), 1)
+                    roster.edit(rosterContent.join('\n'))
                 }
             } else {
                 // There was no roster, we need to clear the channel and create one
-                const channel = msg.channel
-                this.setupChannel(channel, true)
+                setupChannel(msg.channel, this.constants.initialMesssage, true)
                 this.handleMsg(client, msg)
             }
         })
-    } else {
-        msg.delete()
     }
-}
-
-exports.setupChannel = (channel, clear) => {
-    if (clear) {
-        channel.messages
-            .fetch()
-            .then(messages => channel.bulkDelete(messages))
-            .then(() => {
-                channel.send('ROSTER\n')
-            })
-    } else {
-        channel.messages.fetch().then(messages => {
-            if (messages.size === 0) {
-                channel.send('ROSTER\n')
-            }
-        })
-    }
+    msg.delete()
 }
