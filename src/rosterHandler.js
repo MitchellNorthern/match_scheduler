@@ -30,7 +30,7 @@ exports.handleMsg = (client, msg) => {
                 }
             })
             if (roster) {
-                if (content.match(userRefRegex)) {
+                if (content.match(constants.userRegex)) {
                     // Add the user to the roster
                     roster.edit(`${roster.content}\n${content}`)
                 } else {

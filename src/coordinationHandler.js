@@ -29,26 +29,46 @@ If you already know you need to reschedule the match before it takes place, eith
 
 GL HF`
 
+const { rosterChannel } = require('../secrets.json')
+
+function findCurrentRoster(channels) {
+    for (channel of channels.array()) {
+        if (channel.name === rosterChannel) {
+            return channel
+        }
+    }
+}
+
 exports.constants = {
     initialMessage: initMsg,
     invalidFormat:
         'Sorry, your scheduling message was in an invalid format. Please try again.',
+    notOnRoster:
+        'Sorry, but you cannot coordinate matches if you are not on the roster. If you believe this message is in error, please contact a server administrator.',
 }
 
 exports.handleMsg = (client, msg) => {
     const splitContent = msg.content.split(' ')
-
-    // Check if the user is on the roster. If they aren't, delete the message
-    // TODO: perform the check
 
     if (splitContent.length !== 5) {
         // If the message is in the improper format, delete it and let the author know
         msg.delete()
         msg.author.send(this.constants.invalidFormat)
     } else {
-        // The message was in the right format, so do some checks
-        // Check if this is a reschedule (TODO)
-        // Check if
-        const date = new Date()
+        // Check if the user is on the roster. If they aren't, delete the message, otherwise continue
+        const roster = findCurrentRoster(msg.guild.channels.cache)
+        const found = roster.messages.cache
+            .first()
+            .content.split('\n')
+            .filter(user => user.match(msg.author.id))
+        if (!found.length) {
+            msg.delete()
+            msg.author.send(this.constants.notOnRoster)
+        } else {
+            // The message was in the right format, so do some checks
+            // Check if this is a reschedule (TODO)
+            // Check if
+            const date = new Date()
+        }
     }
 }
