@@ -29,7 +29,11 @@ If you already know you need to reschedule the match before it takes place, eith
 
 GL HF`
 
+const scheduleMsg = `Schedule:\n`
+
 const { rosterChannel } = require('../secrets.json')
+const utils = require('./utils')
+const { User } = require('discord.js')
 
 function findCurrentRoster(channels) {
     for (channel of channels.array()) {
@@ -39,12 +43,18 @@ function findCurrentRoster(channels) {
     }
 }
 
+function addMatch() {}
+
 exports.constants = {
-    initialMessage: initMsg,
+    initialMessage: [initMsg, scheduleMsg],
     invalidFormat:
         'Sorry, your scheduling message was in an invalid format. Please try again.',
     notOnRoster:
         'Sorry, but you cannot coordinate matches if you are not on the roster. If you believe this message is in error, please contact a server administrator.',
+    dateInPast:
+        'You cannot schedule a match for a date that has already passed. Please try again.',
+    dateTooFarFuture:
+        'You cannot schedule a match for more than 2 weeks in advance.',
 }
 
 exports.handleMsg = (client, msg) => {
@@ -52,23 +62,62 @@ exports.handleMsg = (client, msg) => {
 
     if (splitContent.length !== 5) {
         // If the message is in the improper format, delete it and let the author know
-        msg.delete()
         msg.author.send(this.constants.invalidFormat)
-    } else {
-        // Check if the user is on the roster. If they aren't, delete the message, otherwise continue
-        const roster = findCurrentRoster(msg.guild.channels.cache)
-        const found = roster.messages.cache
-            .first()
-            .content.split('\n')
-            .filter(user => user.match(msg.author.id))
-        if (!found.length) {
-            msg.delete()
-            msg.author.send(this.constants.notOnRoster)
-        } else {
-            // The message was in the right format, so do some checks
-            // Check if this is a reschedule (TODO)
-            // Check if
-            const date = new Date()
-        }
+        msg.delete()
+        return
     }
+    // Check if the user is on the roster. If they aren't, delete the message, otherwise continue
+    const roster = findCurrentRoster(msg.guild.channels.cache)
+    const found = roster.messages.cache
+        .first()
+        .content.split('\n')
+        .filter(user => user.match(msg.author.id))
+    if (!found.length) {
+        msg.author.send(this.constants.notOnRoster)
+        msg.delete()
+        return
+    }
+    // The message was in the right format, so make sure the last part of it was a ping
+    if (!splitContent[4].match(utils.constants.userRegex)) {
+        // The last part of the message was not a ping, so let the author know
+        msg.author.send(this.constants.invalidFormat)
+        msg.delete()
+        return
+    }
+
+    // Now make a date from the rest and ensure it's in the right format
+    const date = new Date(`${splitContent.slice(0, 4).join(' ')} UTC+0:00`)
+
+    // Perform some checks to ensure the date is valid. There are a few checks that must be done:
+    // 1. If the date was invalid, let the sender know
+    if (date.toUTCString() === 'Invalid Date') {
+        msg.author.send(this.constants.invalidFormat)
+        msg.delete()
+        return
+    }
+    // 2. If the date is in the past, let the sender know
+    if (date < Date.now()) {
+        msg.author.send(this.constants.dateInPast)
+        msg.delete()
+        return
+    }
+    // 3. If the date is too far in the future (past 2 weeks), let the sender know
+    if (date > Date.now() + 12096e5) {
+        msg.author.send(this.constants.dateTooFarFuture)
+        msg.delete()
+        return
+    }
+
+    // We know the date was valid and the last part of the message was a ping, so we're good!
+    // Now, determine whether or not this is a reschedule by checking the schedule
+    // TODO
+
+    // Message the mentioned user the proposed time. The DM Handler will take care of the rest
+    msg.mentions.members
+        .first()
+        .send(
+            `Hello! Your opponent from ${
+                msg.guild.name
+            } would like to schedule a match with you on ${date.toUTCString()}. If this is acceptable, please respond to this message with 'Y' or 'y', otherwise respond with 'N' or 'n' (with no single quotes).`
+        )
 }

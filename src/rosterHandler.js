@@ -1,7 +1,7 @@
 const { setupChannel, constants } = require('./utils')
 
 exports.constants = {
-    initialMesssage: 'Roster:',
+    initialMesssage: ['Roster:'],
 }
 
 /**

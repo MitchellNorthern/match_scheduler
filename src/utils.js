@@ -27,17 +27,17 @@ exports.resolveChannel = (client, channelName) => {
  * @param {String} initialMessage the initial message to send to the channel
  * @param {boolean} clear whether or not to clear the channel of all messages (including the roster)
  */
-exports.setupChannel = (channel, initialMessage, clear) => {
+exports.setupChannel = (channel, initialMessages, clear) => {
     if (clear) {
         // If we need to clear the channel, delete all the messages in it and send a new initiaL message
         const messages = channel.messages.cache
         channel.bulkDelete(messages)
-        channel.send(`${initialMessage}\n`)
+        initialMessages.forEach(message => channel.send(`${message}\n`))
     } else {
         // Otherwise, if there are no messages, send the initial message
         channel.messages.fetch().then(messages => {
             if (messages.size === 0) {
-                channel.send(`${initialMessage}\n`)
+                initialMessages.forEach(message => channel.send(`${message}\n`))
             }
         })
     }
