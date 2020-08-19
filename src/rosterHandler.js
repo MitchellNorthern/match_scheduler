@@ -12,7 +12,7 @@ exports.constants = {
  */
 exports.handleMsg = (client, msg) => {
     const content = msg.content
-    const userDeleteRegex = /^del <@!\d*>\S*$/i
+    const userDeleteRegex = /^del <@!?\d*>\S*$/i
 
     if (content === 'clear' && msg.member.hasPermission('ADMINISTRATOR')) {
         // If the message is 'clear' and the member is an administrator, clear the channel

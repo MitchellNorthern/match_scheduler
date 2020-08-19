@@ -35,7 +35,7 @@ If you already know you need to reschedule the match before it takes place, eith
 
 GL HF`
 
-const scheduleMsg = `Schedule:\n`
+const scheduleMsg = `Schedule:`
 
 const { rosterChannel } = require('../secrets.json')
 const utils = require('./utils')
@@ -48,8 +48,6 @@ function findCurrentRoster(channels) {
     }
 }
 
-function addMatch() {}
-
 exports.constants = {
     initialMessage: [initMsg, scheduleMsg],
     invalidFormat:
@@ -61,6 +59,11 @@ exports.constants = {
     dateTooFarFuture:
         'You cannot schedule a match for more than 2 weeks in advance.',
     cannotReschedule: 'Sorry, you cannot reschedule this match.',
+    cannotCheckIn:
+        "Sorry, you cannot check in. Either the match hasn't been confirmed, it's too late or early to check in, or you aren't on the schedule",
+    matchNotFound: "Sorry, we couldn't find a match you are involved in.",
+    alreadyConfirmed:
+        "The match you're trying to check in for has already been confirmed.",
 }
 
 exports.handleMsg = (client, msg) => {
@@ -84,126 +87,294 @@ exports.handleMsg = (client, msg) => {
         return
     }
 
-    if (splitContent.length === 5) {
-        // The message was in the right format, so make sure the last part of it was a ping
-        if (!splitContent[4].match(utils.constants.userRegex)) {
-            // The last part of the message was not a ping, so let the author know
-            msg.author.send(this.constants.invalidFormat)
-            msg.delete()
-            return
-        }
-
-        // Now make a date from the rest and ensure it's in the right format
-        const date = new Date(`${splitContent.slice(0, 4).join(' ')} UTC+0:00`)
-
-        // Perform some checks to ensure the date is valid. There are a few checks that must be done:
-        // 1. If the date was invalid, let the sender know
-        if (date.toUTCString() === 'Invalid Date') {
-            msg.author.send(this.constants.invalidFormat)
-            msg.delete()
-            return
-        }
-        // 2. If the date is in the past, let the sender know
-        if (date < Date.now()) {
-            msg.author.send(this.constants.dateInPast)
-            msg.delete()
-            return
-        }
-        // 3. If the date is too far in the future (past 2 weeks), let the sender know
-        if (date > Date.now() + 12096e5) {
-            msg.author.send(this.constants.dateTooFarFuture)
-            msg.delete()
-            return
-        }
-
-        // We know the date was valid and the last part of the message was a ping, so we're good!
-        // Now, determine whether or not this is a reschedule by checking the schedule
-        // TODO
-
-        // Add the proposed time to the schedule
-        const schedule = msg.channel.messages.cache
-            .array()
-            .filter(message => message.author === client.user)[0]
-
-        const splitSchedule = schedule.content.split('\n')
-        let scheduledMatch = ''
-        let scheduledIndex = -1
-        for (let i = 0; i < splitSchedule.length; i++) {
-            if (
-                splitSchedule[i].match(msg.author.id) &&
-                splitSchedule[i].match(splitContent[4])
-            ) {
-                scheduledMatch = splitSchedule[i]
-                scheduledIndex = i
-                break
-            }
-        }
-
-        // If there was no scheduled match, add it to the schedule
-        if (scheduledIndex === -1) {
-            schedule.edit(
-                schedule.content +
-                    `\n${msg.author} vs ${
-                        splitContent[4]
-                    } - ${date.toUTCString()} - TENTATIVE`
-            )
-        } else {
-            // Otherwise, there was a scheduled match, so this is a reschedule
-            // Make sure the person initiating the reschedule isn't the no-show person
-            if (scheduledMatch.match(new RegExp(`${msg.author.id}-NO-SHOW`))) {
-                msg.author.send(this.constants.cannotReschedule)
-                msg.delete()
-                return
-            }
-            // The author isn't the no-show, so initiate the reschedule
-            scheduledMatch = `\n${msg.author} vs ${
-                splitContent[4]
-            } - ${date.toUTCString()} - TENTATIVE`
-            schedule.edit(
-                splitSchedule
-                    .splice(scheduledIndex, 1, scheduledMatch)
-                    .join('\n')
-            )
-        }
-
-        // Message the mentioned user the proposed time
-        msg.mentions.members
+    // Fetch the schedule and continue
+    msg.channel.messages.fetch().then(messages => {
+        const schedule = messages
+            .filter(message => message.author.id === client.user.id)
             .first()
-            .send(
-                `Hello! Your opponent from ${
-                    msg.guild.name
-                } would like to schedule a match with you on ${date.toUTCString()}. Please either confirm or reject the match in the coordination channel.`
-            )
-    } else {
-        // The message contained only two pieces, meaning it's either a confirmation or a check-in.
-        const piece1 = splitContent[0]
-        const piece2 = splitContent[1]
+        const splitSchedule = schedule.content.split('\n')
 
-        // If both pieces matched the user regex, it's a check-in
-        if (piece1.match(userRegex) && piece2.match(userRegex)) {
-        } else if (
-            (piece1.match(userRegex) && piece2.length === 1) ||
-            (piece2.match(userRegex) && piece1.length === 1)
-        ) {
-            // Otherwise, if one piece is a single character and the other piece is a mention, it's a confirmation
-            let character =
-                piece1.length === 1
-                    ? (character = piece1)
-                    : (character = piece2)
-            // Ensure the character is a Y or N
-            if (
-                character.toUpperCase() !== 'Y' &&
-                character.toUpperCase() !== 'N'
-            ) {
+        if (splitContent.length === 5) {
+            // The message was in the right format, so make sure the last part of it was a ping
+            if (!splitContent[4].match(utils.constants.userRegex)) {
+                // The last part of the message was not a ping, so let the author know
                 msg.author.send(this.constants.invalidFormat)
                 msg.delete()
                 return
             }
+
+            // Now make a date from the rest and ensure it's in the right format
+            const date = new Date(
+                `${splitContent.slice(0, 4).join(' ')} UTC+0:00`
+            )
+
+            // Perform some checks to ensure the date is valid. There are a few checks that must be done:
+            // 1. If the date was invalid, let the sender know
+            if (date.toUTCString() === 'Invalid Date') {
+                msg.author.send(this.constants.invalidFormat)
+                msg.delete()
+                return
+            }
+            // 2. If the date is in the past, let the sender know
+            if (date < Date.now()) {
+                msg.author.send(this.constants.dateInPast)
+                msg.delete()
+                return
+            }
+            // 3. If the date is too far in the future (past 2 weeks), let the sender know
+            if (date > Date.now() + 12096e5) {
+                msg.author.send(this.constants.dateTooFarFuture)
+                msg.delete()
+                return
+            }
+
+            // We know the date was valid and the last part of the message was a ping, so we're good!
+            // Now, determine whether or not this is a reschedule by checking the schedule
+            // Find the match on the schedule
+            let scheduledMatch = ''
+            let scheduledIndex = -1
+            for (let i = 0; i < splitSchedule.length; i++) {
+                if (
+                    splitSchedule[i].match(msg.author.id) &&
+                    splitSchedule[i].match(splitContent[4])
+                ) {
+                    scheduledMatch = splitSchedule[i]
+                    scheduledIndex = i
+                    break
+                }
+            }
+
+            // If there was no scheduled match, add it to the schedule
+            if (scheduledIndex === -1) {
+                schedule.edit(
+                    `${schedule.content}\n${msg.author} vs ${
+                        splitContent[4]
+                    } - ${date.toUTCString()} - TENTATIVE`
+                )
+            } else {
+                // Otherwise, there was a scheduled match, so this is a reschedule
+                // Make sure the person initiating the reschedule isn't the no-show person
+                if (
+                    scheduledMatch.match(
+                        new RegExp('<@!?' + msg.author.id + '>-NO-SHOW')
+                    )
+                ) {
+                    msg.author.send(this.constants.cannotReschedule)
+                    msg.delete()
+                    return
+                }
+                // The author isn't the no-show, so initiate the reschedule
+                scheduledMatch = `${msg.author} vs ${
+                    splitContent[4]
+                } - ${date.toUTCString()} - TENTATIVE`
+                splitSchedule.splice(scheduledIndex, 1, scheduledMatch)
+                schedule.edit(splitSchedule.join('\n'))
+            }
+
+            // Message the mentioned user the proposed time
+            msg.mentions.members
+                .first()
+                .send(
+                    `Hello! Your opponent from ${
+                        msg.guild.name
+                    } would like to schedule a match with you on ${date.toUTCString()}. Please either confirm or reject the match in the coordination channel.`
+                )
         } else {
-            // Else it's in the wrong format
-            msg.author.send(this.constants.invalidFormat)
-            msg.delete()
-            return
+            // The message contained only two pieces, meaning it's either a confirmation or a check-in.
+            const piece1 = splitContent[0]
+            const piece2 = splitContent[1]
+
+            // If both pieces matched the user regex, it's a check-in
+            if (
+                piece1.match(utils.constants.userRegex) &&
+                piece2.match(utils.constants.userRegex)
+            ) {
+                const otherPlayerId = piece1.match(client.user.id)
+                    ? piece2
+                    : piece1
+                const otherPlayer = msg.guild.members.cache.find(
+                    usr =>
+                        usr.id ===
+                        otherPlayerId.substring(3, otherPlayerId.length - 1)
+                )
+
+                // Find the scheduled match
+                let scheduledMatch = ''
+                let scheduledIndex = -1
+                for (let i = 0; i < splitSchedule.length; i++) {
+                    if (
+                        splitSchedule[i].match(msg.author.id) &&
+                        splitSchedule[i].match(otherPlayer.id)
+                    ) {
+                        scheduledMatch = splitSchedule[i]
+                        scheduledIndex = i
+                        break
+                    }
+                }
+
+                // If we couldn't find the scheduled match, the player isn't involved in one
+                if (scheduledIndex === -1) {
+                    msg.author.send(this.constants.cannotCheckIn)
+                    msg.delete()
+                    return
+                }
+
+                // Split up the scheduled match by spaces and check if it's of length 10.
+                // If it isn't, the match hasn't been confirmed yet
+                const splitMatch = scheduledMatch.split(' ')
+                if (splitMatch.length !== 10) {
+                    msg.author.send(this.constants.cannotCheckIn)
+                    msg.delete()
+                    return
+                }
+
+                // Check if the match date is within 15 minutes of the current time. If it's not, they can't check in
+                const matchDate = new Date(splitMatch.slice(4).join(' '))
+                if (
+                    Date.parse(matchDate) + 900000 < Date.now() ||
+                    Date.parse(matchDate) - 900000 > Date.now()
+                ) {
+                    msg.author.send(this.constants.cannotCheckIn)
+                    msg.delete()
+                    return
+                }
+
+                // We're good, check the person in if they haven't already checked in
+                if (
+                    !scheduledMatch.match(
+                        new RegExp('<@!?' + msg.author + '>-CHECKED-IN')
+                    )
+                ) {
+                    scheduledMatch = scheduledMatch.replace(
+                        `<@!?${msg.author.id}>`,
+                        `${msg.author}-CHECKED-IN`
+                    )
+                    console.log(
+                        splitSchedule.splice(scheduledIndex, 1, scheduledMatch)
+                    )
+                    schedule.edit(splitSchedule.join('\n'))
+
+                    // Start a timer if only one player has checked in to verify both players have checked in at the end of the check in window
+                    if (scheduledMatch.matchAll(/-CHECKED-IN/).length === 1) {
+                        setTimeout(() => {
+                            // Get the schedule again, and find the match again
+                            const newSchedule = msg.channel.messages.cache
+                                .array()
+                                .filter(
+                                    message => message.author === client.user
+                                )[0]
+                            const newSplitSchedule = schedule.content.split(
+                                '\n'
+                            )
+                            let newScheduledMatch = ''
+                            let newScheduledIndex = -1
+                            for (let i = 0; i < newSplitSchedule.length; i++) {
+                                if (
+                                    newSplitSchedule[i].match(msg.author.id) &&
+                                    newSplitSchedule[i].match(splitContent[4])
+                                ) {
+                                    newScheduledMatch = newSplitSchedule[i]
+                                    newScheduledIndex = i
+                                    break
+                                }
+                            }
+                            // If the other person still hasn't checked in, mark them as a no show
+                            if (
+                                newScheduledMatch.matchAll(/-CHECKED-IN/)
+                                    .length === 1
+                            ) {
+                                newScheduledMatch = newScheduledMatch.replace(
+                                    splitContent[4],
+                                    `${splitContent[4]}-NO-SHOW`
+                                )
+                                newSplitSchedule.splice(
+                                    newScheduledIndex,
+                                    1,
+                                    newScheduledMatch
+                                )
+                                newSchedule.edit(newSplitSchedule.join('\n'))
+                            }
+                        }, Date.parse(matchDate) + 900000 - Date.now())
+                    }
+                } else {
+                    // The author has already checked in, so let them know
+                    msg.author.send(this.constants.cannotCheckIn)
+                    msg.delete()
+                    return
+                }
+            } else if (
+                (piece1.match(utils.constants.userRegex) &&
+                    piece2.length === 1) ||
+                (piece2.match(utils.constants.userRegex) && piece1.length === 1)
+            ) {
+                // Otherwise, if one piece is a single character and the other piece is a mention, it's a confirmation
+                const character = piece1.length === 1 ? piece1 : piece2
+                const otherPlayerId = character === piece1 ? piece2 : piece1
+                const otherPlayer = msg.guild.members.cache.find(
+                    usr =>
+                        usr.id ===
+                        otherPlayerId.substring(3, otherPlayerId.length - 1)
+                )
+                // Ensure the character is a Y or N
+                if (
+                    character.toUpperCase() !== 'Y' &&
+                    character.toUpperCase() !== 'N'
+                ) {
+                    msg.author.send(this.constants.invalidFormat)
+                    msg.delete()
+                    return
+                }
+
+                let scheduledMatch = ''
+                let scheduledIndex = -1
+                for (let i = 0; i < splitSchedule.length; i++) {
+                    if (
+                        splitSchedule[i].match(msg.author.id) &&
+                        splitSchedule[i].match(otherPlayer.id)
+                    ) {
+                        scheduledMatch = splitSchedule[i]
+                        scheduledIndex = i
+                        break
+                    }
+                }
+
+                // If the match wasn't found, let the player know
+                if (scheduledIndex === -1) {
+                    msg.author.send(this.constants.matchNotFound)
+                    msg.delete()
+                    return
+                }
+
+                // If the match has already been confirmed, let the player know
+                if (!scheduledMatch.match(' - TENTATIVE')) {
+                    msg.author.send(this.constants.alreadyConfirmed)
+                    msg.delete()
+                    return
+                }
+
+                // If the player is confirming the scheduling, remove the tenative flag
+                if (character === 'Y') {
+                    scheduledMatch = scheduledMatch.replace(' - TENTATIVE', '')
+                    splitSchedule.splice(scheduledIndex, 1, scheduledMatch)
+                    schedule.edit(splitSchedule.join('\n'))
+                    otherPlayer.send(
+                        `The time you submitted for your match with ${msg.author} was confirmed! GL HF`
+                    )
+                } else if (scheduledMatch.match(' - TENTATIVE')) {
+                    // Otherwise, if the match is tentative, delete the match and let the other player know
+                    otherPlayer.send(
+                        `The time you submitted for your match with ${msg.author} was rejected. Please coordinate with them to find another time.`
+                    )
+                    splitSchedule.splice(scheduledIndex, 1)
+                    schedule.edit(splitSchedule.join('\n'))
+                }
+            } else {
+                // Else it's in the wrong format
+                msg.author.send(this.constants.invalidFormat)
+                msg.delete()
+                return
+            }
         }
-    }
+    })
+    msg.delete()
 }

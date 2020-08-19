@@ -1,5 +1,5 @@
 exports.constants = {
-    userRegex: /^<@!\d*>\S*$/,
+    userRegex: /^<@!?\d*>\S*$/,
 }
 
 /**
