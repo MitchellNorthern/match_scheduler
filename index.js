@@ -5,7 +5,6 @@ const {
     logChannel,
 } = require('./secrets.json')
 const coordinationHandler = require('./src/coordinationHandler')
-const dmHandler = require('./src/dmHandler')
 const logHandler = require('./src/logHandler')
 const rosterHandler = require('./src/rosterHandler')
 const Discord = require('discord.js')
@@ -37,6 +36,11 @@ client.on('ready', () => {
             coordinationHandler.constants.initialMessage,
             false
         )
+    })
+
+    const logs = utils.resolveChannel(client, logChannel)
+    logs.forEach(log => {
+        utils.setupChannel(log, logHandler.constants.initialMessage, false)
     })
 })
 
@@ -75,8 +79,10 @@ client.on('message', msg => {
                 )
             }
             break
-        case 'dm':
-            dmHandler.handleMsg(client, msg)
+        default:
+            console.log(
+                `Unknown message from ${msg.guild.name} with content ${msg.content}`
+            )
             break
     }
 })

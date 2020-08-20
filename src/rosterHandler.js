@@ -1,7 +1,13 @@
 const { setupChannel, constants } = require('./utils')
 
 exports.constants = {
-    initialMesssage: ['Roster:'],
+    initialMesssage: [
+        `This is the roster for the league. Any users not on the roster cannot coordinate matches, so ensure all players are on the roster.
+    
+    If you want to reset the roster at any time, please message \`reset\` in this channel. You must be a server admin to do this.
+    
+    Roster:`,
+    ],
 }
 
 /**
@@ -14,7 +20,7 @@ exports.handleMsg = (client, msg) => {
     const content = msg.content
     const userDeleteRegex = /^del <@!?\d*>\S*$/i
 
-    if (content === 'clear' && msg.member.hasPermission('ADMINISTRATOR')) {
+    if (content === 'reset' && msg.member.hasPermission('ADMINISTRATOR')) {
         // If the message is 'clear' and the member is an administrator, clear the channel
         setupChannel(msg.channel, this.constants.initialMesssage, true)
     } else if (

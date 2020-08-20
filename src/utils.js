@@ -29,7 +29,7 @@ exports.resolveChannel = (client, channelName) => {
  */
 exports.setupChannel = (channel, initialMessages, clear) => {
     if (clear) {
-        // If we need to clear the channel, delete all the messages in it and send a new initiaL message
+        // If we need to clear the channel, delete all the messages in it and send a new initial message
         const messages = channel.messages.cache
         channel.bulkDelete(messages)
         initialMessages.forEach(message => channel.send(`${message}\n`))
