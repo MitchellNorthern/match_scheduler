@@ -1,0 +1,5 @@
+{
+    "coordinationChannel": "ms-coordinate",
+    "logChannel": "ms-log",
+    "rosterChannel": "ms-roster"
+}

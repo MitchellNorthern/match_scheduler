@@ -4,7 +4,8 @@
     "description": "Helps schedule matches between individuals (or groups with captains)",
     "main": "index.js",
     "dependencies": {
-        "discord.js": "^12.2.0"
+        "discord.js": "^12.2.0",
+        "dotenv": "^8.2.0"
     },
     "author": "ashen",
     "scripts": {

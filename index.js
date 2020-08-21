@@ -1,21 +1,18 @@
+require('dotenv').config()
+
 const {
-    token,
     coordinationChannel,
     rosterChannel,
     logChannel,
-} = require('./secrets.json')
+} = require('./constants.json')
 const coordinationHandler = require('./src/coordinationHandler')
 const logHandler = require('./src/logHandler')
 const rosterHandler = require('./src/rosterHandler')
+
 const Discord = require('discord.js')
 const client = new Discord.Client()
 
 const utils = require('./src/utils')
-
-// Secrets contains:
-//      Token
-//      Client ID
-//      Permissions Integer
 
 client.on('ready', () => {
     // Set up the rosters
@@ -38,6 +35,7 @@ client.on('ready', () => {
         )
     })
 
+    // Set up the logs
     const logs = utils.resolveChannel(client, logChannel)
     logs.forEach(log => {
         utils.setupChannel(log, logHandler.constants.initialMessage, false)
@@ -87,4 +85,4 @@ client.on('message', msg => {
     }
 })
 
-client.login(token)
+client.login(process.env.BOT_TOKEN)

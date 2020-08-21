@@ -1,10 +1,11 @@
 const instructions = `This is the log channel where you may submit commands to the bot. The bot will post the results here, so it is encouraged to keep this channel private.
 
 Current instructions are:
+\`reset log\` - Resets the current log channel (this one), deleting all messages and resending the initial instructions. 
 \`log schedule\` - Clears the current schedule and puts it here so a more permanent record of schedules can be kept.
 \`reset schedule\` - Resets the current schedule channel, deleting all messages and resetting to its initial state.`
 
-const { coordinationChannel } = require('../secrets.json')
+const { coordinationChannel } = require('../constants.json')
 const coordinationHandler = require('./coordinationHandler')
 const utils = require('./utils')
 
@@ -59,6 +60,8 @@ exports.handleMsg = (client, msg) => {
                     true
                 )
             }
+        } else if (msg.content.toLowerCase() === 'reset log') {
+            utils.setupChannel(msg.channel, this.constants.initialMessage, true)
         }
     }
 }

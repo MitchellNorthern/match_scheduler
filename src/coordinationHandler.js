@@ -37,7 +37,7 @@ GL HF`
 
 const scheduleMsg = `Schedule:`
 
-const { rosterChannel } = require('../secrets.json')
+const { rosterChannel } = require('../constants.json')
 const utils = require('./utils')
 
 function findCurrentRoster(channels) {
