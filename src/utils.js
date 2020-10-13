@@ -6,7 +6,7 @@ exports.constants = {
  * Retrieves an array of channels based on a given name
  *
  * @param client the client object
- * @param channelName the name of the channel to resolve
+ * @param {String} channelName the name of the channel to resolve
  */
 exports.resolveChannel = (client, channelName) => {
     const foundChannels = []
@@ -31,7 +31,11 @@ exports.setupChannel = (channel, initialMessages, clear) => {
     if (clear) {
         // If we need to clear the channel, delete all the messages in it and send a new initial message
         const messages = channel.messages.cache
-        channel.bulkDelete(messages)
+        messages.forEach(msg => {
+            msg.delete()
+                .then(res => console.log(res))
+                .catch(err => console.error(err))
+        })
         initialMessages.forEach(message => channel.send(`${message}\n`))
     } else {
         // Otherwise, if there are no messages, send the initial message
